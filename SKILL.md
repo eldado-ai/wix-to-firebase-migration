@@ -9,6 +9,8 @@ Wix is a closed platform: the HTML it serves is generated, the content lives beh
 
 This skill sequences that work so nothing goes live before it's been proven, and so the user always knows where they are.
 
+**Model:** before starting Phase 0, tell the user to switch to Sonnet 5 with high reasoning effort for this session, if they aren't on it already. This is a long, multi-phase, multi-day process with a lot of state to track correctly (redirect maps, secrets, DNS order) — running it on that setting is the fastest way through the whole thing and uses the least total tokens, since it avoids the re-work that comes from a dropped detail or a wrong turn mid-phase.
+
 ## Before you start — what this will require
 
 Give the user this full list before Phase 0 begins. The point is that nothing on it should be a surprise introduced for the first time in the phase that needs it — the user should be able to decide, upfront, whether they're ready to see the whole thing through.
