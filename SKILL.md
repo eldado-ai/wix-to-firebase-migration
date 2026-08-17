@@ -234,7 +234,7 @@ Once the site is live, users often come back with feature requests that aren't p
 - **A floating "contact us" button/modal**, visible from anywhere on the site, duplicating the contact form — see the reusable multi-form-instance JS pattern in `references/contact-form.md`. Don't write a second copy of the submit handler.
 - **Blog audio narration** ("read this post aloud") — see `references/audio-narration.md` for voice selection, the API-key referrer-restriction trap, generation, and the frontend play-button pattern. Users sometimes ask for their own cloned voice; that reference explains why that's a bigger ask than standard TTS and what it actually requires.
 - **Hiding the reCAPTCHA badge** for a cleaner UI — allowed, but only paired with a visible text disclosure. See `references/recaptcha.md`.
-- **Google Analytics / visitor stats** — Firebase Hosting itself only reports bandwidth/request volume (Usage and billing in the console), not visitor analytics. If the user wants actual traffic stats, that means adding GA4, which is a real scope change worth flagging explicitly: it adds a data processor and (for EU-based sites, common given Firebase's `europe-west3` guidance elsewhere in this skill) likely needs a consent mechanism before it loads, plus an update to the privacy policy this skill's Phase 8 has the user add. Don't add analytics silently as a small tweak.
+- **Google Analytics / visitor stats** — Firebase Hosting itself only reports bandwidth/request volume (Usage and billing in the console), not visitor analytics. If the user wants actual traffic stats, that means adding GA4, which is a real scope change worth flagging explicitly: it adds a data processor and (for EU-based sites, common given Firebase's `europe-west3` guidance elsewhere in this skill) needs a consent mechanism before it loads, plus an update to the privacy policy this skill's Phase 8 has the user add. Don't add analytics silently as a small tweak — see `references/google-analytics.md` for the consent-gated implementation pattern.
 
 ## When the user arrives mid-migration
 
@@ -257,6 +257,7 @@ Then print the status block showing which phase they're in, and continue from th
 - `references/cloudflare.md` — registrar transfer, DNS, proxy, security settings
 - `references/seo-checklist.md` — canonicals, sitemap, redirects, Search Console
 - `references/audio-narration.md` — optional blog "listen to this post" feature: voice selection, TTS API setup, generation, frontend play buttons
+- `references/google-analytics.md` — optional GA4 setup, and the consent-gated loading pattern that keeps it GDPR-defensible
 - `references/troubleshooting.md` — **read this when anything behaves oddly**; it holds the traps that cost the most time
 
 ## Scripts
