@@ -17,14 +17,20 @@ You get a **site key** (public, goes in frontend JS) and a **secret key** (goes 
 <script src="https://www.google.com/recaptcha/api.js?render=SITE_KEY" async defer></script>
 ```
 
-On form submit, get a token before posting:
+On form submit, get a token before posting -- and always chain `.catch()`, not just `.then()`. If `execute()` never resolves (Google's script blocked by a network issue, an ad-blocker, a privacy extension), an uncaught rejection here leaves the submit button disabled forever with no feedback, or lets Google's own opaque built-in error text be what a visitor sees instead of anything in the site's voice:
 
 ```js
 grecaptcha.ready(function() {
-  grecaptcha.execute('SITE_KEY', {action: 'contact'}).then(function(token) {
-    payload.recaptchaToken = token;
-    // ...then POST payload
-  });
+  grecaptcha.execute('SITE_KEY', {action: 'contact'})
+    .then(function(token) {
+      payload.recaptchaToken = token;
+      // ...then POST payload
+    })
+    .catch(function() {
+      // route through the same failure-message path a rejected submission uses --
+      // don't leave this silent, and don't let Google's own error surface instead
+      showFormError('Could not reach the spam-protection service. Check your connection and try again, or contact us directly.');
+    });
 });
 ```
 
@@ -44,13 +50,15 @@ const data = await resp.json();
 
 Reject below a score threshold (0.5 is a reasonable default) and reject a missing token outright.
 
-## The two failure modes that aren't your code
+## The three failure modes that aren't your code
 
-Both look like application bugs and cost real debugging time before the actual cause is found — check these first.
+All three look like application bugs and cost real debugging time before the actual cause is found — check these first.
 
 **"ERROR for site owner: Invalid domain for site key"** shown directly to a real visitor. The domain they're on isn't in the key's registered domain list. Fix in the reCAPTCHA admin console (Settings → Domains), not in code. This recurs every time a new domain starts serving the form — the temporary `*.web.app` domain, then later the real domain — so re-check the domain list at each stage rather than assuming it's still complete.
 
 **Server logs show `browser-error` from `siteverify`, with no other detail**, while the domain list is confirmed correct. This is very likely an **Enterprise-type key being checked against the classic `siteverify` endpoint**, which only understands standard v3/v2 keys. Enterprise keys need a different verification API (`createAssessment`) entirely. The fix is not code — delete the key and create a fresh one through the classic admin console URL above, explicitly as Score based (v3). Confirm by checking the key's row in the reCAPTCHA console; it will say "reCAPTCHA v3" plainly if correct, or show Enterprise-specific fields if not.
+
+**A visitor sees "Could not connect to the reCAPTCHA service..." or the submit button just gets stuck disabled with no message.** This is Google's own script failing to reach Google's servers client-side (a network blip, an ad-blocker, a privacy extension blocking `www.google.com/recaptcha`) — it isn't in the site's own templates or copy, so searching the codebase for that exact text turns up nothing, which is itself the tell that it's coming from Google's library, not the site. The actual bug worth fixing is almost always missing error handling on the site's own side: an unhandled rejection on `grecaptcha.execute(...).then(...)` with no `.catch()` (see the Frontend section above). Fix it there once and every visitor sees the site's own friendly message instead of depending on whatever Google's client library happens to surface.
 
 If you inherit an existing key and can't tell which type it is, the fastest resolution is often to just create a new standard v3 key from scratch and swap both the site key (frontend) and secret (backend secret value) — faster than diagnosing an ambiguous existing key.
 

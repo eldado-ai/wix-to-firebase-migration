@@ -158,10 +158,11 @@ Layer three cheap defenses rather than relying on one: a honeypot field, a per-I
 
 The honeypot must be hidden with the clip technique, **not** `left:-9999px` — the off-screen approach expands the document's scroll width to ~10,000px, which breaks the layout on every phone. This is a real trap; see `references/troubleshooting.md`.
 
-reCAPTCHA has two failure modes that look like bugs in your code and aren't:
+reCAPTCHA has three failure modes that look like bugs in your code and aren't:
 
 - `Invalid domain for site key` — every domain that serves the form must be registered on the key, including `*.web.app` and `*.firebaseapp.com` during testing.
 - Silent `browser-error` on verification — usually an Enterprise-type key being verified against the classic `siteverify` endpoint. Create a standard v3 key from the classic reCAPTCHA admin console.
+- If reCAPTCHA's own script can't reach Google (network issue, an ad-blocker, a privacy extension), `grecaptcha.execute(...)` rejects — and if that rejection isn't caught, the submit button gets stuck disabled forever with no message at all, or Google's own opaque built-in error text surfaces instead of anything in the site's voice. Always chain `.catch()` on the `execute()` call and show the site's own friendly message through the same `finish(false, ...)` path used for a failed submission — see `references/recaptcha.md`.
 
 ---
 
