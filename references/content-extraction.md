@@ -24,7 +24,7 @@ curl -s https://example.com/post/some-slug | grep -o '<meta property="og:descrip
 
 This works for meta tags but the `og:description` Wix generates is truncated (~500 characters, often cut mid-word) — treat it as a fallback for the meta description on the new page, never as the article body.
 
-For the actual body, render the page and read the DOM after JS executes. `scripts/extract_wix_content.py` does this with a headless browser (Playwright) and pulls text from the `<article>` element, which is where Wix places blog post content. If a headless browser isn't available in the current environment, drive it interactively instead: navigate to the URL, wait for load, and extract text from the rendered page — the result is the same, just page-by-page instead of batched.
+For the actual body, render the page and read the DOM after JS executes — and capture more than plain text while you're in there. `scripts/extract_wix_content.py` does this with a headless browser (Playwright): it walks the `<article>` element's children and produces a list of typed blocks (`heading`, `paragraph`, `image`) instead of one flattened string. Extracting only `innerText`, the tempting shortcut, silently throws away every subheading, inline link, and embedded image in the post — real content loss that isn't obvious until someone compares the new page against the old one line by line. If a headless browser isn't available in the current environment, drive it interactively instead: navigate to the URL, wait for load, and read the rendered DOM the same way — the result is the same, just page-by-page instead of batched.
 
 Batch requests where possible rather than one page load per round trip — loading several pages back-to-back before extracting is significantly faster than a strict navigate-then-extract-then-navigate loop, especially across dozens of pages.
 
@@ -39,16 +39,37 @@ One record per page, not per finished file:
   "new_slug": "english-readable-slug",
   "title": "Post title",
   "category": "Category label",
-  "body_paragraphs": ["First paragraph...", "Second paragraph..."]
+  "og_image": "https://static.wixstatic.com/media/...",
+  "body_blocks": [
+    {"type": "heading", "level": 2, "text": "A subheading"},
+    {"type": "paragraph", "html": "Text with a <a href=\"...\">link</a> and <strong>emphasis</strong>."},
+    {"type": "image", "src": "https://static.wixstatic.com/media/...", "alt": "..."}
+  ]
 }
 ```
 
-Two fields matter beyond the obvious:
+Three fields matter beyond the obvious:
 
 - **`old_url`/`old_slug`** — needed later to generate the 301 redirect map (Phase 6). Losing this means re-deriving it from scratch, which is fully avoidable by capturing it now.
 - **`new_slug`** — pick a stable, readable, ASCII slug per page at extraction time (transliterate or translate the old slug's meaning, don't just percent-decode it). Deciding this once here, rather than ad hoc during site generation, keeps the old→new mapping unambiguous.
+- **`body_blocks`** — replaces a flat paragraph list. Paragraph `html` is pre-sanitized to a small inline allow-list (`a`, `strong`, `b`, `em`, `i`, `br`) at extraction time, stripping Wix's presentational wrapper spans/classes while keeping the handful of tags that carry real meaning. Headings stay separate from paragraphs so the rebuild can render them as actual `<h2>`/`<h3>` elements, not flattened prose.
 
-Split body text into paragraphs at this stage (on blank lines, or on the DOM's own paragraph boundaries) rather than storing one long string — Phase 2's generator turns each paragraph into a `<p>` tag directly, and clean paragraph breaks now save re-parsing prose later.
+## Step 4: Download referenced images before generating pages
+
+`og_image` and every `image`-type block still point at Wix's CDN (`static.wixstatic.com`) at this point — `scripts/download_images.py` downloads each one to a local folder and rewrites those fields to local paths, in place:
+
+```bash
+python download_images.py content.json --output-dir img/
+```
+
+Skipping this step means the rebuilt site either ships with no images, or keeps silently hotlinking `static.wixstatic.com` — which doesn't actually leave Wix, and breaks if the user's Wix account is ever closed or the media reorganized.
+
+Two things worth knowing before running it:
+
+- **Wix serves resized variants at URLs like `.../media/<id>~mv2.jpg/v1/fill/w_800,h_600,al_c/name.jpg`.** The script strips the `/v1/...` transform segment to fetch the original-resolution file at the bare `.../media/<id>~mv2.jpg` path instead of whatever one page happened to request — otherwise every image ends up capped at its smallest on-site usage size.
+- **This is a real download loop against Wix's servers, not local file copying.** It runs with a small delay between requests by default and reports failures explicitly rather than leaving a broken path silently in place — a handful of failures usually means a deleted or made-private Wix media ID, worth a manual check rather than a retry.
+
+Run `generate_site.py` (Phase 2) only after this step — pass it `--img-prefix` matching each output directory's depth relative to `img/` (empty string at the site root, `../` for pages one level down, e.g. under `blog/`).
 
 ## Common issues
 

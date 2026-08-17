@@ -91,7 +91,9 @@ Full detail in `references/content-extraction.md`. Two things determine success:
 
 **Get the page list from the sitemap, never from the site's own navigation.** A Wix blog listing page shows a paginated or partial subset — often a handful of recent posts. The sitemap has all of them. Sites routinely have 10× more posts than the blog page suggests. Getting this wrong means silently dropping most of the user's content, and it won't be obvious until much later.
 
-**Wix renders content with JavaScript, so `curl` returns a shell, not the article.** Use browser automation to load each URL and extract the rendered text. `curl` is still useful for the sitemap itself (plain XML) and for checking `og:` meta tags, which Wix does put in the initial HTML — but the `og:description` is truncated and is not a substitute for the body.
+**Wix renders content with JavaScript, so `curl` returns a shell, not the article.** Use browser automation to load each URL and extract the rendered content — structured (headings, inline links/emphasis, images), not just flattened text; see `references/content-extraction.md` for why plain `innerText` silently drops real content. `curl` is still useful for the sitemap itself (plain XML) and for checking `og:` meta tags, which Wix does put in the initial HTML — but the `og:description` is truncated and is not a substitute for the body.
+
+**Images live on Wix's CDN and don't come along for free.** Every photo the site uses — hero images, inline blog images — is hosted at `static.wixstatic.com`. Extracting text without downloading these means the rebuilt site either has no images or keeps hotlinking Wix's CDN, which isn't actually leaving Wix. `scripts/download_images.py` handles this; run it between extraction and site generation.
 
 Store extracted content as structured data (one record per page: slug, title, category, body paragraphs), not as finished HTML. Keeping content separate from presentation means Phase 2 can regenerate all pages after any template change — which will happen, repeatedly.
 
@@ -260,7 +262,8 @@ Then print the status block showing which phase they're in, and continue from th
 Run with `--help` for usage.
 
 - `scripts/discover_wix_pages.py` — enumerate every URL from a Wix sitemap
-- `scripts/extract_wix_content.py` — extract rendered content to structured JSON
+- `scripts/extract_wix_content.py` — extract rendered content (headings, inline links/emphasis, images) to structured JSON
+- `scripts/download_images.py` — download every referenced image locally and rewrite content JSON to local paths; run before `generate_site.py`
 - `scripts/generate_site.py` — build static pages from extracted content + a template
 - `scripts/generate_redirects.py` — old→new 301 map merged into `firebase.json`
 - `scripts/generate_sitemap.py` — `sitemap.xml` and `robots.txt`
