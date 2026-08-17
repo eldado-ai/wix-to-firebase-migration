@@ -23,11 +23,15 @@ Wix is a closed platform: the HTML it serves is generated, content lives behind 
 | Post-cutover verification | Confirm on the real domain, not the temporary one |
 | Cloudflare (optional) | Only if the tradeoff (a registrar transfer) is worth it to the user |
 
-Two optional add-ons are documented too, since they come up often after a migration: a floating "contact us" button reusing the same form, and blog post audio narration via text-to-speech.
+Three optional add-ons are documented too, since they come up often after a migration:
+
+- A floating "contact us" button reusing the same form, visible from anywhere on the site
+- Blog post audio narration via text-to-speech (voice selection, generation, play buttons)
+- Google Analytics (GA4) — with a consent-gated loading pattern, so nothing is measured until a visitor actively accepts, and a privacy-policy update to match
 
 ## Using this
 
-This repo is meant to be used as a Claude Code skill, not run as a standalone CLI tool. Point Claude Code at it (or drop it in a skills directory it scans) and start a conversation about moving a Wix site — `SKILL.md` is the entry point the agent follows.
+This repo is meant to be used as a Claude Code skill, not run as a standalone CLI tool. Point Claude Code at it (or drop it in a skills directory it scans) and start a conversation about moving a Wix site — `SKILL.md` is the entry point the agent follows. It also recommends switching to Sonnet 5 with high reasoning effort before starting, since this is a long, multi-day process with a lot of state (redirect maps, secrets, DNS order) to track correctly without rework.
 
 The scripts under `scripts/` are also usable by hand if you'd rather drive the process yourself — each one takes `--help` for usage, and `references/` has the full detail behind every phase (the non-obvious traps, not just the happy path).
 
